@@ -207,3 +207,25 @@ Next gates:
 2. Compare sequential fresh/persistent Domstride at 102 tests without Selenium using existing paired runner. Separate diagnostic runs with per-process RSS, V8 heapUsed/heapTotal/external/arrayBuffers and completed-test/reset count. Check retained DOM, handles, async callbacks and Rack session lifecycle. Optional explicit GC only in a separate diagnostic, not performance measurements.
 3. Stress 501/999 independent test invocations, retain full traces and parity; consider bounded worker recycling only if continued growth is established. Wider regression and parallel scaling remain pending. No runtime change in this evidence update.
 
+
+
+## Selenium session-loss finding (seed 1083, 2026-11-27)
+
+Source: supplied first 150 lines of 03-measured-selenium.log. Chrome 157.0.8103.78, selenium-webdriver 4.54.0, Capybara 3.40.0, Action Pack 8.1.4.1, Puma 8.1.3. The progress output shows 42 successful tests before the first error, in MarketplaceSystemTest#test_password_visibility_and_sign_in__scale_0028 at test/system/marketplace_test.rb:36. First exception: Selenium::WebDriver::Error::InvalidSessionIdError: invalid session id: session deleted as the browser has closed the connection; from disconnected: Unable to receive message from renderer. Subsequent screenshot (before_teardown) and session reset (after_teardown) attempts fail with InvalidSessionIdError. Following scenarios also encounter invalid session IDs. Together with partial results.json (102 tests, 225 assertions, 60 errors, no assertion failures, exit 1, no timeout), this supports a cascading session-loss failure, not 60 independent application defects. The underlying cause of renderer disconnection remains unknown. No evidence establishes OOM or a particular Chrome bug.
+
+Preserve failed benchmark; do not replace it with a successful retry. Reproduce in a separate diagnostic log with the same seed, workload and pinned browser (single Rails worker):
+
+```sh
+set -o pipefail
+mkdir -p tmp/system-diagnostics
+SYSTEM_TEST_DRIVER=selenium RAILS_ENV=test PARALLEL_WORKERS=1 PETSTORE_SUITE_REPEATS=34 \
+  SE_BROWSER_VERSION=157.0.8103.78 SE_TIMEOUT=900 SE_SKIP_DRIVER_IN_PATH=true SE_FORCE_BROWSER_DOWNLOAD=true \
+  bundle exec rails test test/scale/marketplace_workload.rb --seed 1083 --verbose \
+  2>&1 | tee "tmp/system-diagnostics/selenium-seed1083-$(date +%Y%m%d-%H%M%S).log"
+```
+
+This is diagnostic, not comparable timing (verbose logging and no RSS sampler). Review environment overrides before reproducing; original benchmark runner sanitizes driver environment. Do not retry failed tests inside measured samples or silently recreate a failed browser. If repeated failure, collect browser/renderer crash diagnostics and OS memory-pressure evidence before changing versions/flags. A successful repeat does not invalidate prior failure.
+
+Independent Domstride scale experiment remains unblocked: run existing paired fresh/persistent benchmark at 102 tests, cache off, same pin, and inspect memory traces. Separate diagnostic memory measurements (Ruby/Node RSS, V8 heap metrics and completed reset count) remain planned.
+
+Domstride reliability requirement: failure containment at test boundaries. Report original failed test, preserve error evidence, make secondary diagnostics best-effort, retire a broken worker and use a fresh isolated worker for subsequent tests if policy allows; never silently replay a failed command or test. Benchmark mode remains strict and records failures. Add fault-injection tests for worker termination, pending request, reset failure and cleanup; distinguish infrastructure errors from assertion failures. This is a proposed requirement, not a verified recovery capability.
