@@ -16,6 +16,11 @@ jobs:
           RAILS_ENV: test
       - run: bin/rails test
       - run: bin/rails test:system
+        env:
+          SE_TIMEOUT: '900'
+          SE_SKIP_DRIVER_IN_PATH: 'true'
+          SE_FORCE_BROWSER_DOWNLOAD: 'true'
+          SE_BROWSER_VERSION: '157.0.8103.78'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
