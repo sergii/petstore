@@ -1,0 +1,1 @@
+<section class="form-panel panel"><h1>Reset password</h1><%= form_with url: passwords_path do |form| %><div class="field"><%= form.label :email_address, "Email address" %><%= form.email_field :email_address, required: true, autocomplete: "email" %></div><%= form.submit "Send reset link", class: "button" %><% end %></section>

@@ -1,0 +1,11 @@
+<article class="listing-card" id="<%= dom_id(listing) %>">
+  <%= link_to listing_path(listing), class: "card-link" do %>
+    <div class="listing-art" aria-hidden="true"><%= Listing::CATEGORY_ICONS.fetch(listing.category, "🐾") %></div>
+    <div class="card-body">
+      <span class="tag"><%= listing.condition %></span>
+      <h3><%= listing.title %></h3>
+      <p class="muted"><%= listing.category %> · <%= listing.user.name %></p>
+      <strong class="price"><%= number_to_currency(listing.price) %></strong>
+    </div>
+  <% end %>
+</article>

@@ -1,0 +1,3 @@
+<div class="section-heading"><h1>My listings</h1><%= link_to "Sell an item", new_listing_path, class: "button" %></div>
+<div class="listing-grid"><%= render @listings %></div>
+<% if @listings.empty? %><p class="empty">You haven't listed anything yet.</p><% end %>

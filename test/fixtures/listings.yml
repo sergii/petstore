@@ -1,0 +1,14 @@
+carrier:
+  user: alex
+  title: Travel carrier
+  description: A gently used dog carrier.
+  category: Dogs
+  condition: Good
+  price: 35.00
+bed:
+  user: sam
+  title: Cat bed
+  description: A cozy cat bed.
+  category: Cats
+  condition: Like new
+  price: 22.00

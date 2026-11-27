@@ -1,0 +1,17 @@
+<section class="hero">
+  <span class="eyebrow">THE SECOND-HAND PET MARKETPLACE</span>
+  <h1>Little paws.<br>Big second chances.</h1>
+  <p>Find gently used pet essentials, or give your own gear a new home.</p>
+  <%= link_to "Sell an item", new_listing_path, class: "button" %>
+</section>
+<section aria-labelledby="browse-heading">
+  <div class="section-heading"><h2 id="browse-heading">Explore listings</h2><span class="muted"><%= pluralize(@listings.size, "item") %></span></div>
+  <%= form_with url: root_path, method: :get, class: "filters" do |form| %>
+    <div><%= form.label :q, "Search" %><%= form.search_field :q, value: params[:q], placeholder: "Carrier, leash, bed..." %></div>
+    <div><%= form.label :category, "Category" %><%= form.select :category, options_for_select(Listing::CATEGORIES, params[:category]), include_blank: "All pets" %></div>
+    <%= form.submit "Search listings", class: "button" %>
+    <%= link_to "Clear", root_path %>
+  <% end %>
+  <div class="listing-grid"><%= render @listings %></div>
+  <% if @listings.empty? %><p class="empty">No listings found. Try a different search.</p><% end %>
+</section>

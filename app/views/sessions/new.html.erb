@@ -1,0 +1,12 @@
+<section class="form-panel panel"><h1>Welcome back</h1><p class="muted">Sign in to manage your listings.</p>
+  <%= form_with url: session_path do |form| %>
+    <div class="field"><%= form.label :email_address, "Email address" %><%= form.email_field :email_address, required: true, autocomplete: "username" %></div>
+    <div class="field" data-controller="password-visibility">
+      <%= form.label :password %><%= form.password_field :password, required: true, autocomplete: "current-password", data: { password_visibility_target: "input" } %>
+      <button type="button" class="link-button" aria-pressed="false" data-password-visibility-target="button" data-action="password-visibility#toggle">Show password</button>
+    </div>
+    <%= form.submit "Sign in", class: "button full" %>
+  <% end %>
+  <p><%= link_to "Forgot password?", new_password_path %></p>
+  <p>New here? <%= link_to "Create account", new_registration_path %></p>
+</section>

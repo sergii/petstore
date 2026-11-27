@@ -1,0 +1,16 @@
+<%= link_to "← Back to listings", root_path, class: "back-link" %>
+<article class="detail panel">
+  <div class="listing-art detail-art" aria-hidden="true"><%= Listing::CATEGORY_ICONS.fetch(@listing.category, "🐾") %></div>
+  <div>
+    <span class="tag"><%= @listing.condition %></span>
+    <h1><%= @listing.title %></h1>
+    <p class="price"><%= number_to_currency(@listing.price) %></p>
+    <p class="muted"><%= @listing.category %> · Listed by <%= @listing.user.name %></p>
+    <h2>About this item</h2>
+    <%= simple_format @listing.description %>
+    <% if authenticated? && Current.user == @listing.user %>
+      <div class="actions"><%= link_to "Edit listing", edit_listing_path(@listing), class: "button" %>
+      <%= button_to "Delete listing", listing_path(@listing), method: :delete, class: "button danger", form: { data: { turbo_confirm: "Delete this listing?" } } %></div>
+    <% end %>
+  </div>
+</article>

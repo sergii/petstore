@@ -1,0 +1,11 @@
+<%= render "shared/errors", record: listing %>
+<%= form_with model: listing, data: { controller: "listing-form" } do |form| %>
+  <div class="field"><%= form.label :title %><%= form.text_field :title, required: true, maxlength: 100 %></div>
+  <div class="field"><%= form.label :description %><%= form.text_area :description, required: true, maxlength: 1000, rows: 5, data: { listing_form_target: "description", action: "input->listing-form#updateCount" } %><span class="muted counter" data-listing-form-target="count" aria-live="polite">0 / 1000</span></div>
+  <div class="field-row">
+    <div class="field"><%= form.label :category %><%= form.select :category, Listing::CATEGORIES, { prompt: "Choose a category" }, required: true %></div>
+    <div class="field"><%= form.label :condition %><%= form.select :condition, Listing::CONDITIONS, { prompt: "Choose a condition" }, required: true %></div>
+  </div>
+  <div class="field"><%= form.label :price, "Price (USD)" %><%= form.number_field :price, min: 0.01, max: 100000, step: 0.01, required: true, data: { listing_form_target: "price", action: "input->listing-form#updatePrice" } %><div class="preview">Price preview: <strong data-listing-form-target="preview" aria-live="polite">—</strong></div></div>
+  <div class="actions"><%= form.submit listing.persisted? ? "Save changes" : "Publish listing", class: "button" %><%= link_to "Cancel", listing.persisted? ? listing_path(listing) : root_path %></div>
+<% end %>

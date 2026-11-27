@@ -1,0 +1,11 @@
+<section class="form-panel panel"><h1>Create your account</h1><p class="muted">Join a community of pet lovers.</p>
+  <%= render "shared/errors", record: @user %>
+  <%= form_with model: @user, url: registration_path do |form| %>
+    <div class="field"><%= form.label :name %><%= form.text_field :name, required: true, autocomplete: "name" %></div>
+    <div class="field"><%= form.label :email_address, "Email address" %><%= form.email_field :email_address, required: true, autocomplete: "email" %></div>
+    <div class="field"><%= form.label :password %><%= form.password_field :password, required: true, minlength: 8, autocomplete: "new-password" %><small>At least 8 characters.</small></div>
+    <div class="field"><%= form.label :password_confirmation, "Confirm password" %><%= form.password_field :password_confirmation, required: true, autocomplete: "new-password" %></div>
+    <%= form.submit "Create account", class: "button full" %>
+  <% end %>
+  <p>Already registered? <%= link_to "Sign in", new_session_path %></p>
+</section>
