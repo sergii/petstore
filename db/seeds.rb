@@ -1,3 +1,5 @@
+return unless Rails.env.development?
+
 seller = User.find_or_create_by!(email_address: "demo@example.com") do |user|
   user.name = "Alex"
   user.password = "petstore-demo"
