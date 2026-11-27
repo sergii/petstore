@@ -255,3 +255,30 @@ bundle exec ruby script/diagnose_memory.rb --suite-repeats 167
 ```
 
 Inspect per-reset Node heapUsed, heapTotal, RSS, external, arrayBuffers and Ruby RSS/GC counters for plateau or continued growth. No conclusion about retained objects without further GC/heap analysis. Regression and execution pending.
+
+
+## MEM-001 verified; Selenium diagnostic rerun (2026-11-27)
+
+User-reported console output, Pet Store 981fa0f, Domstride dd735a4. Diagnostic runner unit tests 3/7 and persistent worker regression 1/21 passed, no failures/errors/skips. Natural GC, Importmap cache off, one Rails worker. The memory runner completed 102/102 and 501/501 reset samples, with exact assertion parity and its single-PID, empty-document, empty-handles and pending/fetch checks. These are instrumented Minitest suite times, not external wall time benchmarks.
+
+| Workload | Suite seconds | Tests/s | Assertions | Reset samples |
+|---|---:|---:|---:|---:|
+| 102 | 19.047159 | 5.3551 | 510 | 102/102 |
+| 501 | 83.982107 | 5.9656 | 2505 | 501/501 |
+
+All system tests passed, no failures/errors/skips. Summary values below are post-reset sampled MiB, not continuous process peaks.
+
+| Metric | 102 first | 102 last | 102 max | 501 first | 501 last | 501 max |
+|---|---:|---:|---:|---:|---:|---:|
+| Node RSS | 151.77 | 500.73 | 521.03 | 167.11 | 611.39 | 791.98 |
+| V8 heapTotal | 74.52 | 350.73 | 436.72 | 88.52 | 480.45 | 535.94 |
+| V8 heapUsed | 58.64 | 99.88 | 383.46 | 49.93 | 323.49 | 486.00 |
+| Node external | 7.34 | 6.66 | 13.57 | 6.63 | 11.36 | 15.98 |
+| Node arrayBuffers | 1.99 | 1.32 | 8.22 | 1.28 | 6.01 | 10.63 |
+| Ruby RSS | 119.75 | 141.84 | 145.47 | 120.94 | 132.75 | 147.45 |
+
+4.91x as many tests with 1.52x sampled max Node RSS, 1.27x max heapUsed, and 1.014x max Ruby RSS across separate runs. In the 501-test run last heapUsed was 162.52 MiB below sampled max, consistent with GC reclamation. This does not establish a plateau or prove absence of retained objects. First/last/max are not a time series; no per-reset raw results.json has been supplied. Node RSS excludes esbuild child and Ruby, unlike earlier whole-tree measurements. External includes arrayBuffers; do not add them. No forced GC, memory leak attribution, or cross-workload memory budget claim.
+
+Selenium diagnostic reproduction with seed 1083 and pinned Chrome 157.0.8103.78 passed 102 tests / 510 assertions, 0 failures/errors/skips, suite 78.557545s. The previously failing password visibility test scale_0028 also passed. Session loss was not reproduced on this one attempt; intermittent infrastructure failure remains documented, underlying cause unknown. Verbose diagnostic timing is not a benchmark. Do not overwrite the failed sample or claim the browser issue is fixed.
+
+Next gates: obtain both per-reset memory results.json files and inspect heapUsed troughs, heapTotal/RSS evolution, and reset counters; repeat on 999 tests with current diagnostic; only then consider a separate periodic forced-GC experiment if trends remain ambiguous. Do not force GC in regular benchmarks. Run a separate uninstrumented 501-test Selenium/persistent comparison after checking available memory; maintain exact parity and retain failed samples. Recovery and worker recycling remain proposed, not implemented. No runtime change in this evidence update.
