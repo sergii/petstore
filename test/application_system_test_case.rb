@@ -1,3 +1,8 @@
+ENV["SE_TIMEOUT"] ||= "900"
+ENV["SE_SKIP_DRIVER_IN_PATH"] ||= "true"
+ENV["SE_FORCE_BROWSER_DOWNLOAD"] ||= "true"
+ENV["SE_BROWSER_VERSION"] ||= "157.0.8103.78"
+
 require "test_helper"
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
