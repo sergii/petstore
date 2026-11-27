@@ -37,3 +37,29 @@ The separate System Benchmark workflow runs on relevant benchmark-file PR change
 ## Known integration evidence (2026-11-27)
 
 User-reported macOS Apple Silicon, Ruby 4.0.10, Rails 8.1.4.1, Node 26.7.0. Pet Store experiment at ac910e1, Domstride 0f7efe9. Selenium: 3.261522 s; Domstride: 2.919743 s, both 3 runs / 15 assertions / zero failures, errors or skips. These are single Rails-reported suite times, **not** results of this benchmark runner. No full browser parity is claimed.
+
+
+## Completed sequential benchmark (2026-11-27)
+
+User-reported local run at e168e2d, pinned Domstride 0f7efe9. All 24 invocations passed (4 warmups, 20 measured). Each driver executed 30 measured tests and 150 assertions. Runner unit tests: 5 runs, 18 assertions, zero failures/errors/skips.
+
+| Metric | Selenium | Domstride |
+|---|---:|---:|
+| Median wall s | 3.265 | 3.095 |
+| p95 wall s | 3.760 | 3.180 |
+| Median CPU s | 2.610 | 3.925 |
+| Median sampled peak RSS MiB | 1578.2 | 381.2 |
+
+Wall speedup 1.055x, sampled RSS -75.8%, CPU +50.4%. Raw CPU samples/JSON not supplied. No parallel scalability claim yet.
+
+## Next: diagnostic profile (not benchmark timing)
+
+```sh
+bundle exec ruby test/benchmarks/profile_system_test.rb
+bundle exec ruby script/profile_system.rb
+bundle exec ruby script/profile_system.rb --node-cpu
+```
+
+The first profile uses Domstride's existing command-level instrumentation, collects each closed worker's counters, and records Ruby process CPU totals. The optional V8 CPU profile requires a Node version accepting --cpu-prof and --cpu-prof-dir in NODE_OPTIONS; use Chrome DevTools Performance or another compatible local viewer to inspect .cpuprofile files. Worker wall time includes asynchronous waits and can overlap Rack work and Ruby round-trip time; these are not disjoint CPU categories. Bundle hit/miss counters refer to the existing classic-script cache, not Importmap graph caching.
+
+Output under tmp/system-profiles: sessions.jsonl, summary.json, system.log and optional .cpuprofile files. Instrumentation is opt-in and does not alter original test scenarios or normal benchmark configuration. Local CPU profiles may expose source paths and function names; do not publish automatically. Profile scripts are not a substitute for the uninstrumented benchmark.
