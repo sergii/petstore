@@ -1,0 +1,133 @@
+name: System Benchmark
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'Gemfile'
+      - 'Gemfile.lock'
+      - 'script/**'
+      - 'test/**'
+      - '.github/workflows/system-benchmark.yml'
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    # Compare both drivers on the same sandbox-compatible runner image.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec ruby test/benchmarks/system_runner_test.rb
+      - run: bundle exec domstride setup
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bin/rails test:system
+      - run: bundle exec ruby script/benchmark_system.rb --reuse-worker --suite-repeats 34 --warmup 1 --runs 2 --timeout 600
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: system-benchmark
+          path: tmp/system-benchmarks/
+          if-no-files-found: ignore
+  compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec domstride setup
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bundle exec ruby test/benchmarks/system_runner_test.rb
+      - run: bundle exec ruby test/benchmarks/worker_reuse_benchmark_test.rb
+      - run: bundle exec ruby test/benchmarks/memory_diagnostic_test.rb
+      - run: bundle exec ruby "$(bundle show domstride)/test/assets_test.rb"
+      - run: bundle exec ruby "$(bundle show domstride)/test/persistent_worker_test.rb"
+      - run: bin/rails test:system
+        env:
+          SYSTEM_TEST_DRIVER: domstride
+          DOMSTRIDE_REUSE_WORKER: '1'
+  reuse-performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec domstride setup
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bundle exec ruby script/benchmark_worker_reuse.rb --suite-repeats 34 --warmup 1 --runs 2 --timeout 600
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reuse-performance
+          path: tmp/system-benchmarks/
+          if-no-files-found: ignore
+  memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec domstride setup
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bundle exec ruby script/diagnose_memory.rb --suite-repeats 167
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: memory-diagnostics
+          path: tmp/system-memory/
+          if-no-files-found: ignore
+  parallel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec domstride setup
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bundle exec ruby script/benchmark_parallel.rb --workers 1,2,4 --suite-repeats 34 --warmup 1 --runs 2 --timeout 600
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parallel-scalability
+          path: tmp/system-parallel/
+          if-no-files-found: ignore

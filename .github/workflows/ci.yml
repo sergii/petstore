@@ -4,7 +4,8 @@ on:
   pull_request:
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Keep Chrome sandbox enabled on a compatible runner image.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
@@ -21,9 +22,41 @@ jobs:
           SE_SKIP_DRIVER_IN_PATH: 'true'
           SE_FORCE_BROWSER_DOWNLOAD: 'true'
           SE_BROWSER_VERSION: '157.0.8103.78'
+          CHROME_LOG_FILE: ${{ github.workspace }}/tmp/chrome.log
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: system-test-screenshots
-          path: tmp/screenshots
+          path: |
+            tmp/screenshots
+            tmp/chrome.log
+          if-no-files-found: ignore
+  domstride:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec domstride setup
+      - run: bundle exec domstride doctor --json
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bin/rails test:system
+        env:
+          SYSTEM_TEST_DRIVER: domstride
+          DOMSTRIDE_FAILURE_DIR: tmp/domstride-failures
+          DOMSTRIDE_RECORD_DIR: tmp/domstride-recordings
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: domstride-diagnostics
+          path: |
+            tmp/domstride-failures
+            tmp/domstride-recordings
           if-no-files-found: ignore
