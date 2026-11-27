@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/sergii/domstride.git
-  revision: 0f7efe9825e385c05bc59839d388f188304d36e7
-  ref: 0f7efe9825e385c05bc59839d388f188304d36e7
+  revision: aa34bae597f15c41a517f783557f652d59c061af
+  ref: aa34bae597f15c41a517f783557f652d59c061af
   specs:
     domstride (0.0.1)
       base64 (>= 0.2, < 1)
