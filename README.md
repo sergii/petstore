@@ -32,7 +32,7 @@ Scenarios: guest browsing/search, signup/signin/signout, listing lifecycle, vali
 ## Domstride experiment (draft)
 
 The same original system tests run with either driver. Selenium remains the default.
-Domstride is pinned to `ebb6aa312a91f1ea25bb46041ee74145d8ed75df` on perf/persistent-worker-lifecycle (opt-in persistent worker experiment, stacked on verified OPT-001). Node 22+ and npm are required only for the Domstride runtime.
+Domstride is pinned to `aa34bae597f15c41a517f783557f652d59c061af` on perf/revalidated-importmap-cache (opt-in compiled Importmap experiment, stacked on OPT-002). Node 22+ and npm are required only for the Domstride runtime.
 
 ```sh
 bundle install

@@ -131,3 +131,20 @@ bundle exec ruby script/benchmark_worker_reuse.rb --warmup 2 --runs 20
 ```
 
 The runner reuses the original measurement and correctness checks, records each mode and reuse flag, and reports median/p95 for each metric plus median of within-pair wall ratios, seconds saved, and persistent wins. Every measured pair is retained. No dependency pin or runtime change. Output tmp/system-benchmarks/reuse-ab-*/results.json. Remain opt-in pending wider regression, long-running memory and isolation tests. Next optimization candidate: Importmap cache, only if correctness and measurable residual asset overhead justify it. Existing warmed esbuild time is already low; no cache implementation yet.
+
+
+## OPT-002 paired A/B verified (2026-11-27)
+
+Pet Store ea1b99a, Domstride ebb6aa3: runner 3/9, all 44 invocations passed (20 measured pairs, 2 warmup pairs). Fresh/persistent: median wall 2.645/1.765s, p95 3.750/2.840s, CPU 3.300/2.185s, sampled RSS 347.4/368.5MiB. Paired median speedup 1.516x, median saved 0.895s, wins 19/20. Wider isolation and long-running RSS checks remain necessary. Raw JSON not supplied.
+
+## OPT-003: revalidated Importmap cache
+
+Pinned aa34bae597f15c41a517f783557f652d59c061af. Strict warning mode, opt-in. Cache only compiled module output, re-fetch all dependencies from Rack and verify exact content and URL before serving compiled code. Does not skip Rack requests or cache HTML. At most two entries; no disk cache. Read-only assets only (request order may change). Same-document-URL key may limit hit rate. Compare profile counters and then paired cache A/B with persistent worker enabled for both modes:
+
+```sh
+bundle exec ruby "$(bundle show domstride)/test/assets_test.rb"
+bundle exec ruby script/profile_system.rb --reuse-worker --importmap-cache
+bundle exec ruby script/benchmark_worker_reuse.rb --importmap-cache --warmup 2 --runs 20
+```
+
+The last command compares cache-off vs cache-on; the JSON key persistent_wins is retained for backward compatibility and counts wins of the second mode. No benchmark evidence yet. Keep cache off by default. Do not assume the cache saves CPU or time until measured.
