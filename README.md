@@ -32,7 +32,7 @@ Scenarios: guest browsing/search, signup/signin/signout, listing lifecycle, vali
 ## Domstride experiment (draft)
 
 The same original system tests run with either driver. Selenium remains the default.
-Domstride is pinned to `74c2edf004be6da90792184e944d05dcc19adc62` on fix/jsdom-scroll-top (draft stacked fixes for UTF-8, AbortSignal and origin scrolling). Node 22+ and npm are required only for the Domstride runtime.
+Domstride is pinned to `0f7efe9825e385c05bc59839d388f188304d36e7` on fix/capybara-confirm-dialog (draft stacked fixes for UTF-8, AbortSignal, origin scrolling and confirmation dialogs). Node 22+ and npm are required only for the Domstride runtime.
 
 ```sh
 bundle install
