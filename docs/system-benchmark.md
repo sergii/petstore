@@ -313,3 +313,5 @@ Parallel runner uses Rails process parallelization with isolated test databases,
 ```sh
 bundle exec ruby script/benchmark_parallel.rb --workers 1,2,4 --suite-repeats 34 --warmup 1 --runs 2
 ```
+
+CI registration adjustment: newly added workflow did not appear in the observed run list for 455cd9a, while existing System Benchmark was queued. Consolidate four experiment jobs into the existing System Benchmark workflow to use its established PR trigger, retaining the original Selenium comparison job. Remove the separate workflow to avoid duplicate execution. No assertion, driver, or runtime changes in this adjustment.
