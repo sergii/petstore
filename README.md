@@ -52,6 +52,10 @@ SYSTEM_TEST_DRIVER=domstride DOMSTRIDE_FAILURE_DIR=tmp/domstride-failures DOMSTR
 
 Records are metadata-only by default. Do not enable HTML capture with sensitive data.
 
+## System benchmark
+
+Run `bundle exec ruby script/benchmark_system.rb` after dependency/runtime setup and test database preparation. See [benchmark methodology](docs/system-benchmark.md) for warmups, raw JSON, CPU and process-tree RSS metrics, and limitations.
+
 ## Experiment branches
 
 Keep main as the Importmap reference. Add Domstride in a separate PR, then independently evaluate esbuild, Vite, Webpack and other bundlers with the same user flows. Do not change assertions just to make a driver pass.

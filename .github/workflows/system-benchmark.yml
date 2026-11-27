@@ -1,0 +1,36 @@
+name: System Benchmark
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'script/benchmark_system.rb'
+      - 'test/benchmarks/system_runner_test.rb'
+      - '.github/workflows/system-benchmark.yml'
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec ruby test/benchmarks/system_runner_test.rb
+      - run: bundle exec domstride setup
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bin/rails test:system
+      - run: bundle exec ruby script/benchmark_system.rb
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: system-benchmark
+          path: tmp/system-benchmarks/
+          if-no-files-found: ignore
