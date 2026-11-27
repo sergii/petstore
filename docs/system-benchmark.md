@@ -341,3 +341,19 @@ Second Linux memory diagnostic run 45924187469 job 140261603495: 501/2505, 501/5
 Ubuntu 22.04 Selenium sandbox experiment successful: CI run 45924650050 (job 140263051952) shows 18/79 unit/integration/runner tests and 3/15 Selenium system tests all pass; Domstride job 140263052310 on ubuntu-26.04 also passed 3/15. Both CI push and PR runs succeeded. No --no-sandbox or kernel changes. Remove temporary SE_DEBUG from normal CI to avoid excessive protocol logs. Prior failures remain recorded.
 
 Next compare Selenium against persistent Domstride on the SAME Ubuntu 22.04 runner, 102 tests, 1 warmup pair and 2 measured pairs, cache off. This replaces the 3-test comparison in the benchmark workflow; retain strict sample checks. New measurements pending. Remaining independent experiments already executing on earlier commits; no runtime changes. Real-world compatibility and reliability fault injection should be next after results, rather than unbounded synthetic scaling.
+
+
+## Repeated Linux reuse benchmarks and complete CI (2026-11-27)
+
+System Benchmark run 45924649992 at 14cb202 completed all five jobs successfully (benchmark, compatibility, reuse-performance, memory, parallel). Ubuntu 22.04 paired three-test baseline job 140263052202: 2 warmup and 10 measured pairs, all 24 pass. Selenium/fresh Domstride median wall 5.005/5.185s, p95 5.500/5.450s, accounted CPU 4.450/6.770s, sampled median peak tree RSS 2034.2/315.7MiB; wall speedup 0.965x, RSS reduction 84.5%. Not persistent mode.
+
+102-test paired fresh/persistent results, each Linux run one warmup and two measured pairs, all six invocations pass:
+| Run / job | Fresh median wall s | Persistent median wall s | Paired speedup | Paired seconds saved | CPU fresh/persistent s | RSS fresh/persistent MiB |
+|---|---:|---:|---:|---:|---|---|
+| 45924130751 / 140261429822 | 126.415 | 29.945 | 4.222x | 96.470 | 181.530 / 32.150 | 321.0 / 705.2 |
+| 45924187469 / 140261603451 | 133.075 | 31.780 | 4.187x | 101.295 | 189.245 / 34.025 | 321.2 / 508.0 |
+| 45924649992 / 140263052415 | 89.900 | 27.025 | 3.328x | 62.875 | 131.975 / 27.265 | 325.8 / 531.3 |
+
+Measured pairs fresh/persistent seconds respectively: 125.98/29.87, 126.85/30.02; 133.11/31.68, 133.04/31.88; 90.74/26.65, 89.06/27.40. Combined with earlier macOS 3.771x (3 pairs), all 9 measured pairs favor persistent mode. Report per-run ratios, do not pool absolute timings across hosts. RSS increases in every run. Evidence based on CI logs, not extracted artifacts. CPU waited-child accounting and sampled RSS limitations unchanged. This validates reuse for the repeated synthetic workload, not production default safety.
+
+Latest 102-test Selenium vs persistent Domstride run 45924847995 still in progress when checked; no final result yet. No additional benchmark trigger or runtime change in this evidence update.
