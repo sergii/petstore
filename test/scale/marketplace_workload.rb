@@ -21,3 +21,21 @@ class MarketplaceSystemTest
     end
   end
 end
+
+
+# Only the parallel benchmark activates Rails process parallelism and auditing.
+if ENV["PETSTORE_WORKER_AUDIT"]
+  require "json"
+  class MarketplaceSystemTest
+    parallelize(workers: Integer(ENV.fetch("PARALLEL_WORKERS")), with: :processes, threshold: 0)
+
+    def after_teardown
+      super
+      row = { pid: Process.pid, test: name, database: ActiveRecord::Base.connection_db_config.database }
+      File.open(ENV.fetch("PETSTORE_WORKER_AUDIT"), "a", 0o600) do |file|
+        file.flock(File::LOCK_EX)
+        file.puts(JSON.generate(row))
+      end
+    end
+  end
+end

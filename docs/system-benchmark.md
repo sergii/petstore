@@ -300,3 +300,16 @@ Analyzed both user-supplied complete memory results.json files, 102 and 501 samp
 Maximum sampled Node RSS at reset 276, not at suite end. Last-block median RSS lower than preceding block. Natural heap troughs broadly stable after first 100 resets; these are not forced-GC retained-heap measurements. Evidence suggests a warmup/plateau rather than continuous monotonic growth on this synthetic workload. Does not establish absence of slow leaks, full JS isolation, or production memory limits.
 
 Recommendation: end the escalating sequential soak loop for this phase at 501 tests; 999/10,000 repeats are optional later release/soak checks, not mandatory gates without a new hypothesis. Next characterize actual parallel scaling on a fixed workload (102 or 501 tests) with 1/2/4/8 workers and optionally 10 on the measured 10-logical-CPU host, verifying actual worker counts and database isolation; same workload, seeds, assertions, and runtime settings, paired Selenium where feasible, no forced GC or diagnostic hook in timed runs. Measure wall, throughput, aggregate process-tree RSS, CPU accounting caveats, errors, speedup and parallel efficiency. Stop increasing workers when throughput plateaus/regresses or memory budget is exceeded. Wider compatibility and reliability fault injection should follow before production defaults. No code/runtime changes in this evidence update.
+
+
+## CI-driven experiments (2026-11-27)
+
+Domstride system tests passed on Ubuntu CI at b354646; Selenium system tests failed before assertions with SessionNotCreatedError (Chrome instance exited). Root cause not established. Enable Selenium Manager debug and Chrome log artifact on CI only; retain exact browser pin and sandbox behavior. The existing Selenium comparison stays strict and separate.
+
+Domstride Experiments workflow runs independently on pushes changing experiment code: compatibility, paired 102-test worker reuse, 501-test memory diagnostics, and parallel scalability. JSON and logs uploaded even on failures. Two measured runs per configuration are exploratory; compare within one runner only, not absolute timings against macOS. Endurance and fault-injection jobs remain future work.
+
+Parallel runner uses Rails process parallelization with isolated test databases, same 102-test workload, exact counts, alternates worker-count order and audits every test's PID and database path. Audit requires all requested processes to execute tests, unique test identities and distinct databases; failed samples retained, no speedup on incomplete run. Initial CI: 1/2/4 workers on same runner, one warmup and two measured rounds, Domstride persistent/cache off. Eight workers optional via --workers 1,2,4,8 after reviewing memory and actual runner capacity. Selenium mode available separately after startup issue diagnosed. Audit adds small file IO and reports requested vs actual Rails workers, not verified Node PID count. No runtime dependency change. Not yet executed at authoring time.
+
+```sh
+bundle exec ruby script/benchmark_parallel.rb --workers 1,2,4 --suite-repeats 34 --warmup 1 --runs 2
+```

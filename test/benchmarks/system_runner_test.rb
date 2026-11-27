@@ -40,6 +40,18 @@ class SystemBenchmarkRunnerTest < Minitest::Test
     assert_equal 1000, Runner.tree_rss_kib(rows.reverse, 12)
   end
 
+  def test_worker_audit_rejects_serial_execution_and_shared_database
+    rows = [
+      {"pid" => 1, "test" => "a", "database" => "test-0.sqlite3"},
+      {"pid" => 2, "test" => "b", "database" => "test-1.sqlite3"}
+    ]
+    assert Runner.worker_audit(rows, 2, 2)[:passed]
+    refute Runner.worker_audit(rows, 4, 2)[:passed]
+    refute Runner.worker_audit(rows, 2, 3)[:passed]
+    refute Runner.worker_audit([rows[0], rows[1].merge("database" => rows[0]["database"])], 2, 2)[:passed]
+    refute Runner.worker_audit([rows[0], rows[1].merge("test" => "a")], 2, 2)[:passed]
+  end
+
   def test_options_and_environment
     assert_equal 10, Runner.options([])[:runs]
     assert_equal ["test:system"], Runner.test_command(Runner.options([]))

@@ -166,6 +166,17 @@ module Petstore
       nil
     end
 
+    # Verify actual test distribution and database isolation, not just requested workers.
+    def worker_audit(rows, expected_workers, expected_tests)
+      groups = rows.group_by { |row| row.fetch("pid") }
+      databases = groups.values.map { |group| group.map { |row| row.fetch("database") }.uniq }
+      valid = rows.length == expected_tests && rows.map { |row| row.fetch("test") }.uniq.length == expected_tests &&
+        groups.size == expected_workers && databases.all? { |paths| paths.size == 1 && !paths.first.to_s.empty? && paths.first != ":memory:" } &&
+        databases.flatten.uniq.size == expected_workers
+      { passed: valid, actual_workers: groups.size, tests_by_pid: groups.transform_values(&:size),
+        databases_by_pid: groups.transform_values { |group| group.map { |row| row.fetch("database") }.uniq } }
+    end
+
     def run_sample(driver, seed, path, config)
       pid = nil
       status = nil
@@ -175,9 +186,12 @@ module Petstore
       next_trace_at = 0.0
       timed_out = false
       start = monotonic
+      audit_path = config[:audit_workers] ? "#{path}.workers.jsonl" : nil
       File.open(path, "w", 0o600) do |log|
         env = child_env(driver, reuse_worker: config[:reuse_worker], importmap_cache: config[:importmap_cache])
-          .merge("PETSTORE_SUITE_REPEATS" => config.fetch(:suite_repeats, 1).to_s)
+          .merge("PETSTORE_SUITE_REPEATS" => config.fetch(:suite_repeats, 1).to_s,
+                 "PARALLEL_WORKERS" => config.fetch(:workers, 1).to_s,
+                 "PETSTORE_WORKER_AUDIT" => audit_path)
         pid = Process.spawn(env, "/usr/bin/time", "-p", RbConfig.ruby,
                             "bin/rails", *test_command(config), "--seed", seed.to_s,
                             chdir: ROOT, out: log, err: log, pgroup: true)
@@ -220,7 +234,13 @@ module Petstore
       expected = { tests: config[:expected_tests], assertions: config[:expected_assertions], failures: 0, errors: 0, skips: 0 }
       passed = !timed_out && status.success? && counts == expected &&
         %i[wall_seconds suite_seconds cpu_seconds].all? { |key| !result[key].nil? } && samples.positive?
+      audit = if audit_path
+        rows = File.file?(audit_path) ? File.readlines(audit_path).map { |line| JSON.parse(line) } : []
+        worker_audit(rows, config.fetch(:workers, 1), config[:expected_tests])
+      end
+      passed &&= audit[:passed] if audit
       result.merge(driver: driver, seed: seed, log: File.basename(path),
+                   requested_workers: config.fetch(:workers, 1), worker_audit: audit,
                    exit_code: status.exitstatus, exit_signal: status.termsig,
                    timed_out: timed_out, passed: passed, rss_samples: samples, rss_trace: rss_trace,
                    tests_per_second: passed && result[:wall_seconds].positive? ? counts[:tests] / result[:wall_seconds] : nil,
