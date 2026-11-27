@@ -15,7 +15,7 @@ module Petstore
     DRIVERS = %w[selenium domstride].freeze
     ROOT = File.expand_path("..", __dir__)
     DEFAULTS = { runs: 10, warmup: 2, seed: 1081, sample_ms: 100,
-                 timeout: 180, expected_tests: 3, expected_assertions: 15 }.freeze
+                 timeout: 180, expected_tests: 3, expected_assertions: 15, reuse_worker: false }.freeze
     SUMMARY = /(\d+)\s+runs?,\s+(\d+)\s+assertions?,\s+(\d+)\s+failures?,\s+(\d+)\s+errors?,\s+(\d+)\s+skips?/
     DOMSTRIDE_ENV = {
       "DOMSTRIDE_RUNTIME" => "node",
@@ -55,6 +55,7 @@ module Petstore
       config = DEFAULTS.dup
       parser = OptionParser.new do |p|
         p.banner = "Usage: bundle exec ruby script/benchmark_system.rb [options]"
+        p.on("--reuse-worker", "Enable experimental Domstride worker reuse") { config[:reuse_worker] = true }
         p.on("--runs N", Integer, "Measured runs per driver (10)") { |n| config[:runs] = n }
         p.on("--warmup N", Integer, "Warmup runs per driver (2)") { |n| config[:warmup] = n }
         p.on("--seed N", Integer, "Starting seed (1081)") { |n| config[:seed] = n }
@@ -135,11 +136,12 @@ module Petstore
       tree_rss_kib(rows, root)
     end
 
-    def child_env(driver)
+    def child_env(driver, reuse_worker: false)
       # Ignore ambient driver tuning while retaining the configured runtime/cache locations.
       ENV.keys.grep(/\A(?:DOMSTRIDE_|SE_)/).to_h { |key| [key, nil] }
         .merge(ENV.to_h.slice("DOMSTRIDE_RUNTIME_HOME", "SE_CACHE_PATH"))
         .merge(DOMSTRIDE_ENV, SELENIUM_ENV)
+        .merge("DOMSTRIDE_REUSE_WORKER" => (driver == "domstride" && reuse_worker ? "1" : "0"))
         .merge("SYSTEM_TEST_DRIVER" => driver, "RAILS_ENV" => "test",
                "PARALLEL_WORKERS" => "1", "LC_ALL" => "C")
     end
@@ -158,7 +160,7 @@ module Petstore
       timed_out = false
       start = monotonic
       File.open(path, "w", 0o600) do |log|
-        pid = Process.spawn(child_env(driver), "/usr/bin/time", "-p", RbConfig.ruby,
+        pid = Process.spawn(child_env(driver, reuse_worker: config[:reuse_worker]), "/usr/bin/time", "-p", RbConfig.ruby,
                             "bin/rails", "test:system", "--seed", seed.to_s,
                             chdir: ROOT, out: log, err: log, pgroup: true)
         begin

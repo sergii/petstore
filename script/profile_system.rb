@@ -30,9 +30,10 @@ module Petstore
     end
 
     def main(argv)
-      options = { seed: 1081, node_cpu: false }
+      options = { seed: 1081, node_cpu: false, reuse_worker: false }
       OptionParser.new do |parser|
         parser.banner = "Usage: bundle exec ruby script/profile_system.rb [--node-cpu] [--seed N]"
+        parser.on("--reuse-worker", "Enable experimental Domstride worker reuse") { options[:reuse_worker] = true }
         parser.on("--node-cpu", "Capture V8 CPU profiles (may contain local paths)") { options[:node_cpu] = true }
         parser.on("--seed N", Integer) { |n| options[:seed] = n }
       end.parse!(argv)
@@ -42,7 +43,7 @@ module Petstore
       FileUtils.mkdir_p(directory, mode: 0o700)
       File.chmod(0o700, directory)
       raw = File.join(directory, "sessions.jsonl")
-      env = SystemBenchmark.child_env("domstride").merge(
+      env = SystemBenchmark.child_env("domstride", reuse_worker: options[:reuse_worker]).merge(
         "DOMSTRIDE_PROFILE" => "1", "PETSTORE_PROFILE_FILE" => raw, "NODE_OPTIONS" => nil
       )
       if options[:node_cpu]
@@ -73,9 +74,11 @@ module Petstore
         %w[worker.boot_engine mount.assets_total mount.create_window mount.evaluate_modules assets.esbuild_with_rack_and_rewrite].all? { |name| result[:phases_ms].key?(name) }
       report = result.merge(passed: passed, counts: counts, seed: options[:seed],
                             git_commit: SystemBenchmark.capture("git", "rev-parse", "HEAD"),
-                            node_cpu_requested: options[:node_cpu], node_cpu_profiles: profiles,
+                            node_cpu_requested: options[:node_cpu], node_cpu_profiles: profiles, reuse_worker: options[:reuse_worker],
                             caveat: "Nested wall timers overlap; worker wall is not CPU. Diagnostic instrumentation adds overhead.")
       File.write(File.join(directory, "summary.json"), JSON.pretty_generate(report) + "\n")
+      puts "\nSessions captured: #{result[:sessions]}"
+      puts "Worker PIDs: #{rows.select { |row| row["kind"] == "session" }.map { |row| row["worker_pid"] }.uniq.join(", ")}"
       puts "\nCommands by Ruby round-trip wall time:"
       result[:commands].each do |name, counters|
         puts format("%-22s %5d calls %9.2f ms round-trip %9.2f ms worker wall",

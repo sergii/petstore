@@ -48,5 +48,9 @@ class SystemBenchmarkRunnerTest < Minitest::Test
     assert_equal "bundle", env["DOMSTRIDE_ASSETS"]
     assert_nil env["DOMSTRIDE_RECORD_DIR"]
     assert_equal "1", env["PARALLEL_WORKERS"]
+    assert_equal "0", env["DOMSTRIDE_REUSE_WORKER"]
+    assert_equal "1", Runner.child_env("domstride", reuse_worker: true)["DOMSTRIDE_REUSE_WORKER"]
+    assert_equal "0", Runner.child_env("selenium", reuse_worker: true)["DOMSTRIDE_REUSE_WORKER"]
+    assert Runner.options(%w[--reuse-worker])[:reuse_worker]
   end
 end

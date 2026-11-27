@@ -16,5 +16,5 @@ end
 group :test do
   gem "capybara"
   gem "selenium-webdriver"
-  gem "domstride", git: "https://github.com/sergii/domstride.git", ref: "ecfb202557f7c0cb0071c1f1693f5e95026ab625", require: false
+  gem "domstride", git: "https://github.com/sergii/domstride.git", ref: "ebb6aa312a91f1ea25bb46041ee74145d8ed75df", require: false
 end
