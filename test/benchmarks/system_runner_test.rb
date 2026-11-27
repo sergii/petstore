@@ -42,6 +42,13 @@ class SystemBenchmarkRunnerTest < Minitest::Test
 
   def test_options_and_environment
     assert_equal 10, Runner.options([])[:runs]
+    assert_equal ["test:system"], Runner.test_command(Runner.options([]))
+    scaled = Runner.options(%w[--suite-repeats 34])
+    assert_equal 102, scaled[:expected_tests]
+    assert_equal 510, scaled[:expected_assertions]
+    assert_equal ["test", "test/scale/marketplace_workload.rb"], Runner.test_command(scaled)
+    assert_raises(ArgumentError) { Runner.options(%w[--suite-repeats 0]) }
+    assert_raises(ArgumentError) { Runner.options(%w[--suite-repeats 2 --expected-tests 10]) }
     assert_raises(ArgumentError) { Runner.options(%w[--runs 0]) }
     env = Runner.child_env("domstride")
     assert_equal "jsdom31", env["DOMSTRIDE_ENGINE"]

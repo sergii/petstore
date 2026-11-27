@@ -15,7 +15,7 @@ module Petstore
     DRIVERS = %w[selenium domstride].freeze
     ROOT = File.expand_path("..", __dir__)
     DEFAULTS = { runs: 10, warmup: 2, seed: 1081, sample_ms: 100,
-                 timeout: 180, expected_tests: 3, expected_assertions: 15, reuse_worker: false, importmap_cache: false }.freeze
+                 timeout: 180, expected_tests: 3, expected_assertions: 15, reuse_worker: false, importmap_cache: false, suite_repeats: 1 }.freeze
     SUMMARY = /(\d+)\s+runs?,\s+(\d+)\s+assertions?,\s+(\d+)\s+failures?,\s+(\d+)\s+errors?,\s+(\d+)\s+skips?/
     DOMSTRIDE_ENV = {
       "DOMSTRIDE_RUNTIME" => "node",
@@ -57,6 +57,7 @@ module Petstore
         p.banner = "Usage: bundle exec ruby script/benchmark_system.rb [options]"
         p.on("--importmap-cache", "Enable experimental revalidated Importmap cache") { config[:importmap_cache] = true }
         p.on("--reuse-worker", "Enable experimental Domstride worker reuse") { config[:reuse_worker] = true }
+        p.on("--suite-repeats N", Integer, "Repeat the three original scenarios as independent tests") { |n| config[:suite_repeats] = n }
         p.on("--runs N", Integer, "Measured runs per driver (10)") { |n| config[:runs] = n }
         p.on("--warmup N", Integer, "Warmup runs per driver (2)") { |n| config[:warmup] = n }
         p.on("--seed N", Integer, "Starting seed (1081)") { |n| config[:seed] = n }
@@ -68,12 +69,23 @@ module Petstore
       end
       parser.parse!(argv)
       raise ArgumentError, "Unexpected arguments: #{argv.join(' ')}" unless argv.empty?
-      %i[runs seed timeout expected_tests expected_assertions].each do |key|
+      %i[runs seed timeout expected_tests expected_assertions suite_repeats].each do |key|
         raise ArgumentError, "#{key} must be positive" unless config.fetch(key).positive?
       end
       raise ArgumentError, "warmup must be nonnegative" if config[:warmup].negative?
       raise ArgumentError, "sample-ms must be at least 25" if config[:sample_ms] < 25
+      if config[:suite_repeats] > 1
+        unless config.values_at(:expected_tests, :expected_assertions) == [3, 15]
+          raise ArgumentError, "Scaled suite calculates expected counts automatically"
+        end
+        config[:expected_tests] = 3 * config[:suite_repeats]
+        config[:expected_assertions] = 15 * config[:suite_repeats]
+      end
       config
+    end
+
+    def test_command(config)
+      config.fetch(:suite_repeats, 1) > 1 ? ["test", "test/scale/marketplace_workload.rb"] : ["test:system"]
     end
 
     def driver_order(index)
@@ -159,17 +171,26 @@ module Petstore
       status = nil
       peak = nil
       samples = 0
+      rss_trace = []
+      next_trace_at = 0.0
       timed_out = false
       start = monotonic
       File.open(path, "w", 0o600) do |log|
-        pid = Process.spawn(child_env(driver, reuse_worker: config[:reuse_worker], importmap_cache: config[:importmap_cache]), "/usr/bin/time", "-p", RbConfig.ruby,
-                            "bin/rails", "test:system", "--seed", seed.to_s,
+        env = child_env(driver, reuse_worker: config[:reuse_worker], importmap_cache: config[:importmap_cache])
+          .merge("PETSTORE_SUITE_REPEATS" => config.fetch(:suite_repeats, 1).to_s)
+        pid = Process.spawn(env, "/usr/bin/time", "-p", RbConfig.ruby,
+                            "bin/rails", *test_command(config), "--seed", seed.to_s,
                             chdir: ROOT, out: log, err: log, pgroup: true)
         begin
           loop do
             rss = sample_rss(pid)
             peak = [peak || 0, rss].max
             samples += 1 if rss.positive?
+            elapsed = monotonic - start
+            if rss.positive? && elapsed >= next_trace_at
+              rss_trace << { elapsed_seconds: elapsed.round(3), rss_mib: (rss / 1024.0).round(2) }
+              next_trace_at = elapsed + 1.0
+            end
             result = Process.waitpid2(pid, Process::WNOHANG)
             if result
               status = result.last
@@ -201,7 +222,8 @@ module Petstore
         %i[wall_seconds suite_seconds cpu_seconds].all? { |key| !result[key].nil? } && samples.positive?
       result.merge(driver: driver, seed: seed, log: File.basename(path),
                    exit_code: status.exitstatus, exit_signal: status.termsig,
-                   timed_out: timed_out, passed: passed, rss_samples: samples,
+                   timed_out: timed_out, passed: passed, rss_samples: samples, rss_trace: rss_trace,
+                   tests_per_second: passed && result[:wall_seconds].positive? ? counts[:tests] / result[:wall_seconds] : nil,
                    peak_tree_rss_mib: samples.positive? ? peak / 1024.0 : nil)
     end
 
@@ -268,6 +290,7 @@ module Petstore
       write_report(directory, report)
       puts "Benchmark output: #{directory}"
       puts "Warmup: #{config[:warmup]} per driver; measured: #{config[:runs]} per driver"
+      puts "Workload: #{config[:expected_tests]} tests / #{config[:expected_assertions]} assertions per invocation"
       begin
         (config[:warmup] + config[:runs]).times do |index|
           warmup = index < config[:warmup]

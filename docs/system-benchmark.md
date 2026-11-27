@@ -148,3 +148,37 @@ bundle exec ruby script/benchmark_worker_reuse.rb --importmap-cache --warmup 2 -
 ```
 
 The last command compares cache-off vs cache-on; the JSON key persistent_wins is retained for backward compatibility and counts wins of the second mode. No benchmark evidence yet. Keep cache off by default. Do not assume the cache saves CPU or time until measured.
+
+
+## OPT-003 paired A/B results (2026-11-27)
+
+User-reported Pet Store ff7c300, Domstride aa34bae. Assets regression 8 runs / 36 assertions, benchmark runner 5/24, system profile 3/15, all passing. Cache profile: one hit, two misses, 43 Rack requests, 1.135734s suite, mount 461.57ms, assets 181.13ms, esbuild/Rack/rewrite 97.72ms, cache revalidation 6.34ms.
+
+Both paired modes use persistent worker. All 44 invocations passed, including four warmups.
+
+| Metric | Cache off | Cache on |
+|---|---:|---:|
+| Median wall seconds | 1.710 | 1.715 |
+| p95 wall seconds | 1.830 | 2.060 |
+| Median CPU seconds | 2.150 | 2.095 |
+| Median sampled peak RSS MiB | 370.4 | 360.5 |
+
+Median paired speedup 1.009x, paired seconds saved 0.015, cache wins 11/20. No meaningful demonstrated wall-time improvement; p95 worse, small CPU/RSS difference. Keep experimental and off by default. A larger suite may change hit rate; no aggressive cache redesign without evidence. Raw JSON not supplied.
+
+## Scaled sequential workload
+
+Use original three marketplace scenarios repeated as independent test methods, with standard Rails test lifecycle and seeded randomized execution. This is synthetic repeated workload, not hundreds of unique behaviors. Existing test source and ordinary test discovery are unchanged. The benchmark runner calculates expected counts (3 tests and 15 assertions per repeat), rejects any failure/error/skip or count mismatch, and keeps cache off unless explicitly requested.
+
+```sh
+# Smoke: 30 tests / 150 assertions per invocation
+bundle exec ruby script/benchmark_system.rb --reuse-worker --suite-repeats 10 --warmup 0 --runs 1 --timeout 180
+
+# 102 tests / 510 assertions per invocation
+bundle exec ruby script/benchmark_system.rb --reuse-worker --suite-repeats 34 --warmup 1 --runs 3 --timeout 600
+
+# Longer runs, after smaller workload passes
+bundle exec ruby script/benchmark_system.rb --reuse-worker --suite-repeats 167 --warmup 0 --runs 1 --timeout 1800
+bundle exec ruby script/benchmark_system.rb --reuse-worker --suite-repeats 333 --warmup 0 --runs 1 --timeout 3600
+```
+
+The same flag works with benchmark_worker_reuse.rb for direct fresh/persistent comparison. Each invocation is a fresh Rails process; within a persistent invocation the Node worker remains alive across independent test resets. All use one Rails worker. Output now includes tests_per_second and roughly one-second RSS trace alongside sampled peak RSS. RSS is not unique memory or proof of a leak; compare growth and plateau across longer runs. This step measures sequential scalability, not parallel scalability. A single run is exploratory, not a robust median. No new dependency or Domstride runtime changes. Execution and larger-suite fixture isolation still need verification.
