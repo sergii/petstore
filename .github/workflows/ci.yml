@@ -27,3 +27,32 @@ jobs:
           name: system-test-screenshots
           path: tmp/screenshots
           if-no-files-found: ignore
+  domstride:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: bundle install
+      - run: bundle exec domstride setup
+      - run: bundle exec domstride doctor --json
+      - run: bin/rails db:prepare
+        env:
+          RAILS_ENV: test
+      - run: bin/rails test:system
+        env:
+          SYSTEM_TEST_DRIVER: domstride
+          DOMSTRIDE_FAILURE_DIR: tmp/domstride-failures
+          DOMSTRIDE_RECORD_DIR: tmp/domstride-recordings
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: domstride-diagnostics
+          path: |
+            tmp/domstride-failures
+            tmp/domstride-recordings
+          if-no-files-found: ignore
