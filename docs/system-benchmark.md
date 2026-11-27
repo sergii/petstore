@@ -182,3 +182,28 @@ bundle exec ruby script/benchmark_system.rb --reuse-worker --suite-repeats 333 -
 ```
 
 The same flag works with benchmark_worker_reuse.rb for direct fresh/persistent comparison. Each invocation is a fresh Rails process; within a persistent invocation the Node worker remains alive across independent test resets. All use one Rails worker. Output now includes tests_per_second and roughly one-second RSS trace alongside sampled peak RSS. RSS is not unique memory or proof of a leak; compare growth and plateau across longer runs. This step measures sequential scalability, not parallel scalability. A single run is exploratory, not a robust median. No new dependency or Domstride runtime changes. Execution and larger-suite fixture isolation still need verification.
+
+
+## Scaled sequential benchmark evidence and memory investigation (2026-11-27)
+
+Source: user-supplied complete 30-test and partial 102-test results.json. Both captured at Pet Store d905ef17e800066d1c3c71d5ccc14fb173b73c19, Domstride aa34bae597f15c41a517f783557f652d59c061af, Ruby 4.0.10 arm64-darwin25, Node v26.7.0, 10 logical CPUs. Same lock SHA256 c207cc87a6bdcccec9a1ba234a0eb8ad7838d86fd6cdc1bab4d2330cec8f8165; tracked worktree had modified Gemfile.lock at capture. One Rails worker, compatible jsdom31, persistent on, Importmap cache off, Selenium browser pin 157.0.8103.78. No claim of clean checkout at capture.
+
+| Tests | Seed | Driver | Wall s | Suite s | Accounted CPU s | Sampled peak tree RSS MiB | Result |
+|---:|---:|---|---:|---:|---:|---:|---|
+| 30 | 1081 | Selenium | 18.910 | 17.798411 | 20.440 | 3219.953125 | 30/150 pass |
+| 30 | 1081 | Domstride | 6.570 | 5.679919 | 7.580 | 539.484375 | 30/150 pass |
+| 102 | 1081 | Selenium | 56.150 | 55.263531 | 73.240 | 3360.125 | 102/510 pass, warmup |
+| 102 | 1081 | Domstride | 17.010 | 16.111938 | 18.610 | 755.484375 | 102/510 pass, warmup |
+| 102 | 1082 | Domstride | 16.620 | 15.980686 | 18.360 | 750.390625 | 102/510 pass |
+| 102 | 1082 | Selenium | 56.370 | 55.338469 | 72.220 | 3294.500 | 102/510 pass |
+| 102 | 1083 | Selenium | 26.600 | 25.575203 | 30.360 | 3327.500 | 102 tests, 225 assertions, 60 errors, exit 1 |
+
+30-test single-pair speedup 2.878x; 102-test successful measured pair 3.392x, accounted CPU reduction 74.6%, sampled RSS reduction 77.2%. The 102-test experiment was incomplete: only one measured pair completed; no aggregate speedup, p95 or stability claim. The failed sample had no timeout, no exit signal, 0 assertion failures, 60 errors and 0 skips. No exception details supplied. Do not infer browser crash or OOM from RSS or error count. Seed 1083 Domstride was not executed because runner correctly aborted.
+
+Memory traces: Selenium successful 102-test run reaches ~3.1 GiB around 8-10 s and stays broadly near that range until teardown (13.405s 3294.50MiB; 30.756s 3151.64MiB; 55.239s 3097.39MiB). Domstride measured 102-test trace grows from 421.69MiB at 2.182s to 569.78MiB at 5.538s, 656.48MiB at 10.013s and 750.39MiB at 16.590s. Warmup exhibits similar growth (358.80MiB at 2.039s, 616.98MiB at 9.722s, 755.48MiB at 16.294s). Domstride 30-test trace ends at 537.08MiB at 6.081s. No plateau established for Domstride; neither heap leak nor its absence established. Whole-tree RSS includes shared pages, Ruby, Node, esbuild and other descendants; no per-process attribution. CPU accounting also may exclude detached work.
+
+Next gates:
+1. Inspect first exception and grouped exception signatures in 03-measured-selenium.log (not yet supplied); reproduce same seed if appropriate, with exact pinned browser. Preserve failed sample and do not silently retry or loosen tests.
+2. Compare sequential fresh/persistent Domstride at 102 tests without Selenium using existing paired runner. Separate diagnostic runs with per-process RSS, V8 heapUsed/heapTotal/external/arrayBuffers and completed-test/reset count. Check retained DOM, handles, async callbacks and Rack session lifecycle. Optional explicit GC only in a separate diagnostic, not performance measurements.
+3. Stress 501/999 independent test invocations, retain full traces and parity; consider bounded worker recycling only if continued growth is established. Wider regression and parallel scaling remain pending. No runtime change in this evidence update.
+
