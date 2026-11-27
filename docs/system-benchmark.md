@@ -315,3 +315,10 @@ bundle exec ruby script/benchmark_parallel.rb --workers 1,2,4 --suite-repeats 34
 ```
 
 CI registration adjustment: newly added workflow did not appear in the observed run list for 455cd9a, while existing System Benchmark was queued. Consolidate four experiment jobs into the existing System Benchmark workflow to use its established PR trigger, retaining the original Selenium comparison job. Remove the separate workflow to avoid duplicate execution. No assertion, driver, or runtime changes in this adjustment.
+
+
+## Linux CI findings and Selenium sandbox experiment
+
+System Benchmark run 45924187469 compatibility job 140261603244 succeeded: runner 6/35, reuse runner 3/9, memory runner 3/7, assets 8/36, persistent regression 1/21, system 3/15 (24 tests, 123 assertions total). Independent experiments run 45924130751 memory job 140261429810 passed 501/2505, 501 reset samples. Post-reset sampled maxima Node RSS 545.96 MiB, heapUsed 424.20 MiB, heapTotal 458.68 MiB, Ruby RSS 139.68 MiB; last Node RSS 493.45 MiB, heapUsed 152.21 MiB. Different platform/Node version from macOS; not a controlled memory comparison.
+
+CI test job 140261603111 verbose ChromeDriver log confirms matched Chrome/ChromeDriver 157.0.8103.78 and fatal No usable sandbox! before browser session creation. This identifies the startup blocker, not the earlier macOS renderer disconnect. Try the supported ubuntu-22.04 runner image for Selenium CI and the paired benchmark, retaining sandbox and browser pin. Both drivers in paired benchmark execute on the same image. Independent Domstride jobs stay on ubuntu-latest. No --no-sandbox flag, no global kernel or AppArmor policy change. Compatibility of the alternate image is not yet verified. Keep prior failed runs. Reference: https://docs.github.com/en/actions/reference/runners/github-hosted-runners.
