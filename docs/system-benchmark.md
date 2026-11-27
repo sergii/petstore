@@ -282,3 +282,21 @@ All system tests passed, no failures/errors/skips. Summary values below are post
 Selenium diagnostic reproduction with seed 1083 and pinned Chrome 157.0.8103.78 passed 102 tests / 510 assertions, 0 failures/errors/skips, suite 78.557545s. The previously failing password visibility test scale_0028 also passed. Session loss was not reproduced on this one attempt; intermittent infrastructure failure remains documented, underlying cause unknown. Verbose diagnostic timing is not a benchmark. Do not overwrite the failed sample or claim the browser issue is fixed.
 
 Next gates: obtain both per-reset memory results.json files and inspect heapUsed troughs, heapTotal/RSS evolution, and reset counters; repeat on 999 tests with current diagnostic; only then consider a separate periodic forced-GC experiment if trends remain ambiguous. Do not force GC in regular benchmarks. Run a separate uninstrumented 501-test Selenium/persistent comparison after checking available memory; maintain exact parity and retain failed samples. Recovery and worker recycling remain proposed, not implemented. No runtime change in this evidence update.
+
+
+## Full memory traces: stop criteria and next phase (2026-11-27)
+
+Analyzed both user-supplied complete memory results.json files, 102 and 501 samples (603 total). Same Domstride dd735a4 and lock SHA256 f587c5a3b429778a493b904046a34adb457cd06819407fdb2183da3ff5cc4ee0; Pet Store revisions 981fa0f (modified lockfile) and e7afdef (clean checkout), respectively. Both passed exact test/assertion counts. In each run, one Ruby PID, one Node PID, contiguous reset sequence. All 603 samples have zero handles, pending requests, active fetches and error listeners; has_document and confirm_armed false.
+
+501-test run, per-block statistics in MiB:
+| Resets | Median Node RSS | Max Node RSS | Min heapUsed | Median heapUsed |
+|---|---:|---:|---:|---:|
+| 1-100 | 413.0 | 533.4 | 49.9 | 184.9 |
+| 101-200 | 537.2 | 590.8 | 120.6 | 273.1 |
+| 201-300 | 614.0 | 792.0 | 121.7 | 278.3 |
+| 301-400 | 619.7 | 748.4 | 103.5 | 260.4 |
+| 401-501 | 598.5 | 646.2 | 122.0 | 280.0 |
+
+Maximum sampled Node RSS at reset 276, not at suite end. Last-block median RSS lower than preceding block. Natural heap troughs broadly stable after first 100 resets; these are not forced-GC retained-heap measurements. Evidence suggests a warmup/plateau rather than continuous monotonic growth on this synthetic workload. Does not establish absence of slow leaks, full JS isolation, or production memory limits.
+
+Recommendation: end the escalating sequential soak loop for this phase at 501 tests; 999/10,000 repeats are optional later release/soak checks, not mandatory gates without a new hypothesis. Next characterize actual parallel scaling on a fixed workload (102 or 501 tests) with 1/2/4/8 workers and optionally 10 on the measured 10-logical-CPU host, verifying actual worker counts and database isolation; same workload, seeds, assertions, and runtime settings, paired Selenium where feasible, no forced GC or diagnostic hook in timed runs. Measure wall, throughput, aggregate process-tree RSS, CPU accounting caveats, errors, speedup and parallel efficiency. Stop increasing workers when throughput plateaus/regresses or memory budget is exceeded. Wider compatibility and reliability fault injection should follow before production defaults. No code/runtime changes in this evidence update.
