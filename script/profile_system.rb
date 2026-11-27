@@ -9,12 +9,14 @@ module Petstore
     def aggregate(rows)
       sessions = rows.select { |row| row.fetch("kind") == "session" }
       totals = Hash.new(0)
+      phases = Hash.new(0.0)
       commands = Hash.new { |hash, key| hash[key] = Hash.new(0) }
       sessions.each do |session|
         profile = session.fetch("profile")
         %w[rack_requests rack_ms bytes_sent bytes_received bundle_hits bundle_misses].each do |key|
           totals[key] += profile.fetch(key)
         end
+        profile.fetch("phases_ms", {}).each { |name, ms| phases[name] += ms }
         profile.fetch("commands").each do |name, counters|
           %w[count ruby_wall_ms worker_wall_ms].each do |key|
             commands[name][key] += counters.fetch(key)
@@ -22,6 +24,7 @@ module Petstore
         end
       end
       { sessions: sessions.length, totals: totals.to_h,
+        phases_ms: phases.sort_by { |_, ms| -ms }.to_h,
         commands: commands.sort_by { |_, counters| -counters["ruby_wall_ms"] }.to_h,
         ruby_processes: rows.select { |row| row.fetch("kind") == "ruby_process" } }
     end
@@ -66,7 +69,8 @@ module Petstore
       profiles = Dir.glob(File.join(directory, "*.cpuprofile")).map { |path| File.basename(path) }
       passed = status.success? && counts == expected && result[:sessions].positive? &&
         result[:commands].values.any? { |counters| counters["count"].positive? } &&
-        !result[:ruby_processes].empty? && (!options[:node_cpu] || !profiles.empty?)
+        !result[:ruby_processes].empty? && (!options[:node_cpu] || !profiles.empty?) &&
+        %w[worker.boot_engine mount.assets_total mount.create_window mount.evaluate_modules assets.esbuild_with_rack_and_rewrite].all? { |name| result[:phases_ms].key?(name) }
       report = result.merge(passed: passed, counts: counts, seed: options[:seed],
                             git_commit: SystemBenchmark.capture("git", "rev-parse", "HEAD"),
                             node_cpu_requested: options[:node_cpu], node_cpu_profiles: profiles,
@@ -78,6 +82,8 @@ module Petstore
           name, counters["count"], counters["ruby_wall_ms"], counters["worker_wall_ms"])
       end
       puts JSON.pretty_generate(result[:totals])
+      puts "\nMount phases (nested wall times, not additive):"
+      result[:phases_ms].each { |name, ms| puts format("%-38s %9.2f ms", name, ms) }
       puts "Summary: #{directory}/summary.json"
       warn "Profile incomplete or test parity failed; inspect system.log" unless passed
       passed ? 0 : 1
