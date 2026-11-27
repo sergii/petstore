@@ -357,3 +357,8 @@ System Benchmark run 45924649992 at 14cb202 completed all five jobs successfully
 Measured pairs fresh/persistent seconds respectively: 125.98/29.87, 126.85/30.02; 133.11/31.68, 133.04/31.88; 90.74/26.65, 89.06/27.40. Combined with earlier macOS 3.771x (3 pairs), all 9 measured pairs favor persistent mode. Report per-run ratios, do not pool absolute timings across hosts. RSS increases in every run. Evidence based on CI logs, not extracted artifacts. CPU waited-child accounting and sampled RSS limitations unchanged. This validates reuse for the repeated synthetic workload, not production default safety.
 
 Latest 102-test Selenium vs persistent Domstride run 45924847995 still in progress when checked; no final result yet. No additional benchmark trigger or runtime change in this evidence update.
+
+
+## Consolidated Domstride consumer verification (2026-11-28)
+
+Review candidate only. Merge the exact canonical Gherkin specification from Petstore #2 into the tree of Petstore #1, preserving the original application and tests. Pin Domstride to a274adb2ecd00905deeef7045203781caaa8e3f1 (Domstride draft PR #18); gem version and dependency requirements unchanged, update only the Git ref/revision in Gemfile and lockfile. Keep Selenium default, existing sandbox-compatible Ubuntu 22.04 configuration, separate Domstride correctness/recording and opt-in reuse jobs, original benchmark workload and memory/parallel jobs. CI must verify the actual pin. No prior PR closed or merged; no new measurements claimed yet.
