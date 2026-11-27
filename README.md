@@ -32,7 +32,7 @@ Scenarios: guest browsing/search, signup/signin/signout, listing lifecycle, vali
 ## Domstride experiment (draft)
 
 The same original system tests run with either driver. Selenium remains the default.
-Domstride is pinned to `aa34bae597f15c41a517f783557f652d59c061af` on perf/revalidated-importmap-cache (opt-in compiled Importmap experiment, stacked on OPT-002). Node 22+ and npm are required only for the Domstride runtime.
+Domstride is pinned to `dd735a4dea4874c7ca175e1a915fd3897f951583` on research/persistent-memory-diagnostics (explicit memory-state diagnostic; persistent and cache flags remain opt-in). Node 22+ and npm are required only for the Domstride runtime.
 
 ```sh
 bundle install

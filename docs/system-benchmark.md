@@ -229,3 +229,29 @@ This is diagnostic, not comparable timing (verbose logging and no RSS sampler). 
 Independent Domstride scale experiment remains unblocked: run existing paired fresh/persistent benchmark at 102 tests, cache off, same pin, and inspect memory traces. Separate diagnostic memory measurements (Ruby/Node RSS, V8 heap metrics and completed reset count) remain planned.
 
 Domstride reliability requirement: failure containment at test boundaries. Report original failed test, preserve error evidence, make secondary diagnostics best-effort, retire a broken worker and use a fresh isolated worker for subsequent tests if policy allows; never silently replay a failed command or test. Benchmark mode remains strict and records failures. Add fault-injection tests for worker termination, pending request, reset failure and cleanup; distinguish infrastructure errors from assertion failures. This is a proposed requirement, not a verified recovery capability.
+
+
+## OPT-002: 102-test paired worker reuse result
+
+User-reported complete run, 102 tests / 510 assertions per invocation, aa34bae. All eight invocations passed (one warmup pair and three measured pairs).
+
+| Mode | Median wall s | p95 wall s | CPU s | Sampled peak RSS MiB |
+|---|---:|---:|---:|---:|
+| Fresh | 71.320 | 73.770 | 89.890 | 348.1 |
+| Persistent | 19.560 | 20.010 | 20.290 | 675.7 |
+
+Measured paired fresh/persistent wall: 71.32/18.40, 73.77/19.56, 65.11/20.01 s. Median paired speedup 3.771x, median paired seconds saved 52.920, wins 3/3. Persistent wall median -72.6%, CPU -77.4%, sampled peak RSS +94.1%. Three measured pairs only; p95 equals maximum. Distinct from prior Selenium comparison, which remains incomplete. Raw results.json and RSS traces for this direct experiment not supplied.
+
+## MEM-001: explicit post-reset memory diagnostic
+
+Pinned dd735a4dea4874c7ca175e1a915fd3897f951583 (Domstride PR #15). Dedicated runner samples natural Node process memory and counters after each successful reset; Ruby RSS and GC stats separately. No forced GC. Validates exact test/assertion counts, one PID per runtime, one sample per reset and empty document/handles/pending/fetch state. Records JSONL and complete results.json. Does not sample esbuild child RSS; retain previous whole-tree trace for comparison. Diagnostics add overhead and must not be treated as speed measurements. No memory recycling or default change.
+
+```sh
+bundle exec ruby test/benchmarks/memory_diagnostic_test.rb
+bundle exec ruby "$(bundle show domstride)/test/persistent_worker_test.rb"
+bundle exec ruby script/diagnose_memory.rb --suite-repeats 34
+# Only after the smaller diagnostic succeeds:
+bundle exec ruby script/diagnose_memory.rb --suite-repeats 167
+```
+
+Inspect per-reset Node heapUsed, heapTotal, RSS, external, arrayBuffers and Ruby RSS/GC counters for plateau or continued growth. No conclusion about retained objects without further GC/heap analysis. Regression and execution pending.
