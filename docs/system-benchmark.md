@@ -322,3 +322,22 @@ CI registration adjustment: newly added workflow did not appear in the observed 
 System Benchmark run 45924187469 compatibility job 140261603244 succeeded: runner 6/35, reuse runner 3/9, memory runner 3/7, assets 8/36, persistent regression 1/21, system 3/15 (24 tests, 123 assertions total). Independent experiments run 45924130751 memory job 140261429810 passed 501/2505, 501 reset samples. Post-reset sampled maxima Node RSS 545.96 MiB, heapUsed 424.20 MiB, heapTotal 458.68 MiB, Ruby RSS 139.68 MiB; last Node RSS 493.45 MiB, heapUsed 152.21 MiB. Different platform/Node version from macOS; not a controlled memory comparison.
 
 CI test job 140261603111 verbose ChromeDriver log confirms matched Chrome/ChromeDriver 157.0.8103.78 and fatal No usable sandbox! before browser session creation. This identifies the startup blocker, not the earlier macOS renderer disconnect. Try the supported ubuntu-22.04 runner image for Selenium CI and the paired benchmark, retaining sandbox and browser pin. Both drivers in paired benchmark execute on the same image. Independent Domstride jobs stay on ubuntu-latest. No --no-sandbox flag, no global kernel or AppArmor policy change. Compatibility of the alternate image is not yet verified. Keep prior failed runs. Reference: https://docs.github.com/en/actions/reference/runners/github-hosted-runners.
+
+
+## Parallel scaling confirmed on Linux, Chrome sandbox restored
+
+GitHub Actions run 45924130751, parallel job 140261429754, ubuntu-26.04: all 9 invocations passed (one warmup and two measured rounds, 102 tests / 510 assertions each). Runner audit verified requested 1/2/4 Rails worker PIDs and distinct databases, not Node PID identity. Measured wall seconds per worker count: 1: 25.93, 26.03; 2: 17.51, 17.67; 4: 16.95, 16.21. Artifact 15166055747. Independent repeat run 45924187469, job 140261603549, likewise all 9 passed: 1: 27.91, 27.82; 2: 19.32, 19.04; 4: 18.47, 18.38. Artifact 15165877075 (as listed by run artifacts API).
+
+| Workers | First median wall s | First median RSS MiB | First efficiency | Repeat median wall s | Repeat median RSS MiB | Repeat efficiency |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 25.980 | 526.5 | 100.0% | 27.865 | 695.3 | 100.0% |
+| 2 | 17.590 | 1119.8 | 73.8% | 19.180 | 1170.2 | 72.6% |
+| 4 | 16.580 | 1826.8 | 39.2% | 18.425 | 1802.6 | 37.8% |
+
+Speedups 1.48/1.57x and 1.45/1.51x respectively. Diminishing returns from 2 to 4 on these runners, no evidence for 8 or 10; host CPU capacity and cgroup quotas not yet inspected. RSS sums may double-count shared pages. Do not generalize optimal worker count to other hosts or workloads. Two measured rounds per run remain exploratory. Logs and artifact listings inspected; ZIP raw JSON not extracted.
+
+Second Linux memory diagnostic run 45924187469 job 140261603495: 501/2505, 501/501 resets, no failures/errors/skips. Sampled max Node RSS 342.75MiB, V8 heapUsed 220.99MiB, Ruby RSS 138.45MiB. Natural GC variability across runs; no leak-proof claim.
+
+Ubuntu 22.04 Selenium sandbox experiment successful: CI run 45924650050 (job 140263051952) shows 18/79 unit/integration/runner tests and 3/15 Selenium system tests all pass; Domstride job 140263052310 on ubuntu-26.04 also passed 3/15. Both CI push and PR runs succeeded. No --no-sandbox or kernel changes. Remove temporary SE_DEBUG from normal CI to avoid excessive protocol logs. Prior failures remain recorded.
+
+Next compare Selenium against persistent Domstride on the SAME Ubuntu 22.04 runner, 102 tests, 1 warmup pair and 2 measured pairs, cache off. This replaces the 3-test comparison in the benchmark workflow; retain strict sample checks. New measurements pending. Remaining independent experiments already executing on earlier commits; no runtime changes. Real-world compatibility and reliability fault injection should be next after results, rather than unbounded synthetic scaling.

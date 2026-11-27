@@ -22,7 +22,6 @@ jobs:
           SE_SKIP_DRIVER_IN_PATH: 'true'
           SE_FORCE_BROWSER_DOWNLOAD: 'true'
           SE_BROWSER_VERSION: '157.0.8103.78'
-          SE_DEBUG: 'true'
           CHROME_LOG_FILE: ${{ github.workspace }}/tmp/chrome.log
       - uses: actions/upload-artifact@v4
         if: failure()
