@@ -70,3 +70,10 @@ Output under tmp/system-profiles: sessions.jsonl, summary.json, system.log and o
 At f4750a7, Domstride 0f7efe9, both ordinary and Node CPU-profile runs passed 3/15. Internal profile test passed 1/5. Mount dominated command round-trip wall time: 3 calls, 2296.86 ms of roughly 2825 ms aggregate command time (~81%). Worker mount wall 1149.51 ms. Second profile: 2228.26 / 1213.14 ms. Both runs issued 43 Rack requests; total Rack time 220.50 / 195.63 ms. Find handles 68 calls, 217.68 / 213.27 ms. Raw V8 CPU files not supplied. Do not interpret wall-time difference as pure IPC or CPU.
 
 Next diagnostic revision f9e4cc04f020e0c48bb95576d486b9c15de2ccd4 adds boot and nested mount phase measurements (Domstride PR #11). Run bundle install and domstride setup after pulling the pin, then profile_system.rb. Original verified timing baseline remains the earlier pin 0f7efe9; this diagnostic run does not replace it. Do not add a stale lockfile or claim new benchmark parity until actual tests pass. No optimization has been made yet.
+
+
+## Mount-phase evidence and experiment A (2026-11-27)
+
+User local diagnostic f9e4cc0: 3 tests, 15 assertions, 0 errors/failures/skips. Suite 3.411773s. Three mounts 2576.19ms Ruby round-trip, 1627.63ms worker wall. Boot 789.78ms, assets total 1366.73ms (including esbuild/Rack/rewrite 750.79ms, secondary parser require 446.78ms, preparse 147.62ms), window creation 211.77ms, module eval 40.22ms. 43 Rack requests / 182.20ms total. Phase timers overlap; not CPU attribution.
+
+Experiment A pin ecfb202557f7c0cb0071c1f1693f5e95026ab625 (Domstride PR #12): reuse the active engine's JSDOM constructor for inert asset discovery, avoiding loading a second version. No other optimization. Run bundle install, domstride setup, profile_system.rb and the normal benchmark with the same settings. Compare to the original sequential baseline, noting the added diagnostics are disabled during the normal benchmark. Raw V8 profiles not yet provided. Verify regression suite and parity before merging. Keep lockfile updated locally after dependency resolution.

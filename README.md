@@ -32,7 +32,7 @@ Scenarios: guest browsing/search, signup/signin/signout, listing lifecycle, vali
 ## Domstride experiment (draft)
 
 The same original system tests run with either driver. Selenium remains the default.
-Domstride is pinned to `f9e4cc04f020e0c48bb95576d486b9c15de2ccd4` on research/petstore-mount-profile (diagnostic-only instrumentation stacked on verified integration revision 0f7efe9825e385c05bc59839d388f188304d36e7). Node 22+ and npm are required only for the Domstride runtime.
+Domstride is pinned to `ecfb202557f7c0cb0071c1f1693f5e95026ab625` on perf/reuse-loaded-asset-parser (first A/B optimization, stacked on diagnostic revision f9e4cc04f020e0c48bb95576d486b9c15de2ccd4). Node 22+ and npm are required only for the Domstride runtime.
 
 ```sh
 bundle install
